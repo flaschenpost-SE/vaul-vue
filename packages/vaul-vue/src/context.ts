@@ -25,6 +25,7 @@ export interface DrawerRootContext {
   onPress: (event: PointerEvent) => void
   onDrag: (event: PointerEvent) => void
   onRelease: (event: PointerEvent) => void
+  onCancel: () => void
   closeDrawer: () => void
   shouldFade: Ref<boolean>
   fadeFromIndex: Ref<number | undefined>

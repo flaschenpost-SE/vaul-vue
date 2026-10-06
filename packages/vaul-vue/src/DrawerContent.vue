@@ -2,6 +2,7 @@
 import { computed, ref, watchEffect } from 'vue'
 import { DialogContent } from 'reka-ui'
 import { injectDrawerRootContext } from './context'
+import { isVertical } from './helpers'
 import { useScaleBackground } from './useScaleBackground'
 
 const {
@@ -13,6 +14,8 @@ const {
   onPress,
   onDrag,
   onRelease,
+  onCancel,
+  isAllowedToDrag,
   modal,
   emitOpenChange,
   dismissible,
@@ -63,6 +66,27 @@ function handleOnDrag(event: PointerEvent) {
   onDrag(event)
 }
 
+let touchStart: { x: number, y: number } | null = null
+
+function handleTouchStart(event: TouchEvent) {
+  const touch = event.touches[0]
+  touchStart = touch ? { x: touch.clientX, y: touch.clientY } : null
+}
+
+// Once the drawer follows the finger, a native scroll of the same touch would
+// cancel the drag (see onCancel). Only along the drag axis, so horizontal
+// scrollers inside the drawer keep working.
+function handleTouchMove(event: TouchEvent) {
+  const touch = event.touches[0]
+  if (!isAllowedToDrag.value || !event.cancelable || !touchStart || !touch)
+    return
+
+  const deltaX = Math.abs(touch.clientX - touchStart.x)
+  const deltaY = Math.abs(touch.clientY - touchStart.y)
+  if (isVertical(direction.value) ? deltaY > deltaX : deltaX > deltaY)
+    event.preventDefault()
+}
+
 watchEffect (() => {
   if (hasSnapPoints.value) {
     window.requestAnimationFrame(() => {
@@ -83,6 +107,9 @@ watchEffect (() => {
     @pointerdown="handlePointerDown"
     @pointermove="handleOnDrag"
     @pointerup="onRelease"
+    @pointercancel="onCancel"
+    @touchstart.passive="handleTouchStart"
+    @touchmove="handleTouchMove"
     @pointer-down-outside="handlePointerDownOutside"
     @open-auto-focus.prevent
     @escape-key-down="(event) => {

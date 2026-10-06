@@ -135,6 +135,7 @@ export interface Drawer {
   onPress: (event: PointerEvent) => void
   onDrag: (event: PointerEvent) => void
   onRelease: (event: PointerEvent) => void
+  onCancel: () => void
   closeDrawer: () => void
 }
 
@@ -589,6 +590,29 @@ export function useDrawer(props: UseDrawerProps & DialogEmitHandlers): DrawerRoo
     resetDrawer()
   }
 
+  // A browser that takes a touch over for native scrolling ends it with
+  // pointercancel, not pointerup. Without a reset the drawer keeps its drag
+  // offset and every later scroll gesture drags it along.
+  function onCancel() {
+    if (!isDragging.value || !drawerRef.value)
+      return
+
+    drawerRef.value.$el.classList.remove(DRAG_CLASS)
+    isDragging.value = false
+
+    if (!isAllowedToDrag.value)
+      return
+
+    isAllowedToDrag.value = false
+
+    if (snapPoints.value)
+      onReleaseSnapPoints({ draggedDistance: 0, closeDrawer, velocity: 0, dismissible: dismissible.value })
+    else
+      resetDrawer()
+
+    emitRelease(true)
+  }
+
   watch(isOpen, (o) => {
     if (o) {
       openTime.value = new Date()
@@ -680,6 +704,7 @@ export function useDrawer(props: UseDrawerProps & DialogEmitHandlers): DrawerRoo
     onPress,
     onDrag,
     onRelease,
+    onCancel,
     closeDrawer,
     onNestedDrag,
     onNestedRelease,
